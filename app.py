@@ -1,15 +1,9 @@
-import pandas as pd
 import datetime
 from datetime import datetime
-from dash import Dash, Input, Output, dcc, html
+from dash import Dash, Input, Output, dcc, html, dash_table
+import query
 
-dataDF = (
-	pd.read_csv('data/preprocessed_train.csv')
-)
-
-products = dataDF["product_number"].sort_values().unique()
-segments = dataDF["segment"].sort_values().unique()
-productCategories = dataDF["prod_category"].sort_values().unique()
+products, segments, productCategories, dates = query.get_hp_data()
 
 myStyleSheet = [
     {
@@ -96,8 +90,8 @@ app.layout = html.Div(
                                 id = "date-range",
                                 # min_date_allowed = data["date"].min(),
                                 # max_date_allowed = data["date"].max(),
-                                start_date = dataDF["date"].min(),
-                                end_date = dataDF["date"].max(),
+                                start_date = dates.min(),
+                                end_date = dates.max(),
                             ),
                         ]
                     ),
@@ -116,16 +110,86 @@ app.layout = html.Div(
                     ],
                     className = "wrapper",
                 ),
+            html.Div(
+                children = [ 
+                    html.Div(
+                            id='inventory-units-table-card',
+                            children = [   
+                                html.Div(
+                                    children = [
+                                        html.H3(
+                                            f"Data Table",
+                                            style = {
+                                                "display": "inline-block"
+                                            }
+                                        ),
+                                        # html.
+                                        html.Button("Export Table", id="export_table",                    
+                                        style={
+                                            "fontSize": "1em",
+                                            "background-color": "white",
+                                            "color": "black",
+                                            "border-radius": "5px",
+                                            "border": "2px none",
+                                            "box-shadow": '0px 0px 2px 2px rgb(0,0,0)',
+                                            'display': 'inline-block',
+                                            'float':'right',
+                                            'margin-top':'1em',
+                                            'padding': '6px'
+                                            
+                                        })
+                                    ],
+                                ),          
+                                html.Div(
+                                    dash_table.DataTable(
+                                        id = 'inventory-units-table',
+                                        style_header={
+                                            "backgroundColor": "#00a6999c",
+                                            "color": "black",
+                                            "fontWeight":"bold"
+                                        },
+                                        style_data={"backgroundColor": "#fcfcfc", "color": "black"},
+                                        style_data_conditional=[
+                                            {
+                                                'if': {'row_index': 'odd'},
+                                                'backgroundColor': '#00a69947',
+                                            }
+                                        ],
+                                        style_cell={'textAlign': 'center'},
+                                        editable=False,
+                                        filter_action="native",
+                                        
+                                        sort_action="native",
+                                        sort_mode="multi",
+                                        page_action="native",
+                                        page_current=0,
+                                        page_size=10,
+                                        export_format="csv",
+                                        export_headers= 'display'
+                                    ),
+                                    className = "card"
+                                )
+                            ],
+                            hidden= True,
+                            className = "wrapper",
+                        ),
+                    
+                    ],
+                    className = "wrapper",
+                ),
         ],
     )
 
 @app.callback(
         Output("inventory-units","figure"),
+        Output("inventory-units-table",'data'),
+        Output("inventory-units-table",'columns'),
+        Output("inventory-units-table-card",'hidden'),
         Input("product-filter","value"),
         Input("segment-filter","value"),
         Input("prodCat-filter","value"),
         Input("date-range","start_date"),
-        Input("date-range","end_date"),
+        Input("date-range","end_date")
     )
 
 def update_charts(productVar, segmentVar, productCategoryVar, startDateVar, endDateVar):
@@ -143,9 +207,18 @@ def update_charts(productVar, segmentVar, productCategoryVar, startDateVar, endD
     startString = startYear*100 + int(startWeek)
     endString = endYear*100 + int(endWeek)
 
-    filtered_data = dataDF.query(
-            "product_number == @productVar and segment == @segmentVar and prod_category == @productCategoryVar and year_week >= @startString and year_week <= @endString"
-        )
+    now = datetime.now()
+    thisYear = now.year
+    thisWeek = now.isocalendar()[1]
+
+    if( (startYear <= thisYear) or (startYear == thisYear and int(startWeek) <= int(thisWeek)) ):
+        filtered_data = query.get_history().query(
+                "product_number == @productVar and segment == @segmentVar and prod_category == @productCategoryVar and year_week >= @startString and year_week <= @endString"
+            )
+    else:
+        todayString = thisYear*100 + int(thisWeek)
+        ## pass required parameters
+        filtered_data = query.predict()
 
     inventory_units_figure = {
         "data": [
@@ -168,7 +241,28 @@ def update_charts(productVar, segmentVar, productCategoryVar, startDateVar, endD
         },
     }
 
-    return inventory_units_figure
+    table_data = filtered_data[['product_number','year_week','sales_units','inventory_units']]\
+            .rename(columns={'product_number':'Product','year_week': 'Year & Week',\
+                             'sales_units': 'Forecasted Sales','inventory_units':'Forecasted Inventory'}).astype('str')
+    hidden = table_data.empty
+
+    return inventory_units_figure, \
+        table_data.to_dict('rows'), [
+      {"name": i, 'id': i} for i in table_data.columns
+   ], hidden
+
+## Export table function
+app.clientside_callback(
+    """
+    function(n_clicks) {
+        if (n_clicks > 0)
+            document.querySelector("#inventory-units-table button.export").click()
+        return ""
+    }
+    """,
+    Output("export_table", "data-dummy"),
+    [Input("export_table", "n_clicks")]
+)
 
 if __name__ == "__main__":
     app.run_server(debug=True)
