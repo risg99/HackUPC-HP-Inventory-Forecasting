@@ -1,0 +1,8 @@
+# exclude jupyter checkpoints
+.ipynb_checkpoints/
+
+# exclude large dataset
+corpus_ids
+
+# exclude extra notebook
+pre_process_script_p2.ipynb
