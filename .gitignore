@@ -1,5 +1,5 @@
 # exclude jupyter checkpoints
-*/data/*
+*/data/*.sav
 .ipynb_checkpoints/
 
 # exclude large dataset
