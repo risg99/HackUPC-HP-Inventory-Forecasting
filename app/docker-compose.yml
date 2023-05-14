@@ -1,0 +1,16 @@
+version: '3.4'
+
+services:
+  app:
+    container_name: app
+    image: hp_analyser:latest
+    # build:
+    #   context: .
+    #   dockerfile: ./Dockerfile
+    # environment:
+    #   - PYTHONPATH=/app
+    volumes:
+      - ./assets/:/app/assets/
+      - ./data/:/app/data
+    ports:
+      - 8000:8050

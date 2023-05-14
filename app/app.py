@@ -2,7 +2,9 @@ import datetime
 from datetime import datetime
 from dash import Dash, Input, Output, dcc, html, dash_table
 import query
+import logging
 
+logger = logging.getLogger()
 products, segments, productCategories, dates = query.get_hp_data()
 
 myStyleSheet = [
@@ -15,8 +17,8 @@ myStyleSheet = [
     },
 ]
 
-
 app = Dash(__name__, external_stylesheets = myStyleSheet)
+server = app.server
 app.title = "HP Analytics!"
 
 app.layout = html.Div(
@@ -193,8 +195,7 @@ app.layout = html.Div(
     )
 
 def update_charts(productVar, segmentVar, productCategoryVar, startDateVar, endDateVar):
-    global dataDF
-
+    
     startDate = datetime.strptime(startDateVar,'%Y-%m-%d').date()
     endDate = datetime.strptime(endDateVar,'%Y-%m-%d').date()
 
@@ -211,14 +212,29 @@ def update_charts(productVar, segmentVar, productCategoryVar, startDateVar, endD
     thisYear = now.year
     thisWeek = now.isocalendar()[1]
 
-    if( (startYear <= thisYear) or (startYear == thisYear and int(startWeek) <= int(thisWeek)) ):
+    if( (startYear <= thisYear and int(startWeek) < int(thisWeek)) ):
         filtered_data = query.get_history().query(
                 "product_number == @productVar and segment == @segmentVar and prod_category == @productCategoryVar and year_week >= @startString and year_week <= @endString"
             )
     else:
-        todayString = thisYear*100 + int(thisWeek)
+
+        if thisYear == endYear:
+            count = int(endWeek) - int(thisWeek)
+        else :
+
+            last_week = datetime(thisYear, 12, 28)
+            count = last_week.isocalendar()[1]  - int(thisWeek)
+
+            for i in range(thisYear + 1, endYear):
+                last_week = datetime( i , 12, 28)
+                count += last_week.isocalendar()[1] 
+            
+            count += int(endWeek)
+        
         ## pass required parameters
-        filtered_data = query.predict()
+        print(productVar)
+        print(count)
+        filtered_data = query.predict(productVar, count)
 
     inventory_units_figure = {
         "data": [
@@ -246,8 +262,13 @@ def update_charts(productVar, segmentVar, productCategoryVar, startDateVar, endD
                              'sales_units': 'Forecasted Sales','inventory_units':'Forecasted Inventory'}).astype('str')
     hidden = table_data.empty
 
+    if (hidden == True):
+        data = []
+    else:
+        data = table_data.to_dict('records')
+
     return inventory_units_figure, \
-        table_data.to_dict('rows'), [
+        data, [
       {"name": i, 'id': i} for i in table_data.columns
    ], hidden
 

@@ -1,0 +1,7 @@
+dash
+Jinja2
+Flask
+joblib
+datetime
+pandas
+gunicorn
