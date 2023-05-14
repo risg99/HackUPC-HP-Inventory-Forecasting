@@ -104,7 +104,7 @@ app.layout = html.Div(
                 children = [
                     html.Div(
                             dcc.Graph(
-                                id = "inventory-units",
+                                id = "inventory_sales_units",
                                 config={"displayModeBar": False},
                             ),
                             className = "card",
@@ -183,7 +183,7 @@ app.layout = html.Div(
     )
 
 @app.callback(
-        Output("inventory-units","figure"),
+        Output("inventory_sales_units","figure"),
         Output("inventory-units-table",'data'),
         Output("inventory-units-table",'columns'),
         Output("inventory-units-table-card",'hidden'),
@@ -236,24 +236,35 @@ def update_charts(productVar, segmentVar, productCategoryVar, startDateVar, endD
         print(count)
         filtered_data = query.predict(productVar, count)
 
-    inventory_units_figure = {
+    colors = ["#17B897", "#9A348E"]
+
+    inventory_sales_units_figure = {
         "data": [
             {
                 "x": filtered_data["year_week"][:10],
                 "y": filtered_data["inventory_units"][:10],
                 "type": "lines",
                 "hovertemplate": "%{y:.2f}<extra></extra>",
+                "color":colors[0],
+                "name":"Inventory Units",
+            },
+            {
+                "x": filtered_data["year_week"][:10],
+                "y": filtered_data["sales_units"][:10],
+                "type": "lines",
+                "hovertemplate": "%{y:.2f}<extra></extra>",
+                "color":colors[1],
+                "name":"Sales Units",
             },
         ],
         "layout": {
             "title": {
-                "text": "Inventory Levels at HP",
+                "text": "Inventory and Sales Levels at HP Analytics",
                 "x": 0.05,
                 "xanchor": "left",
             },
-            "xaxis": {"fixedrange": True},
-            "yaxis": {"tickprefix": "", "fixedrange": True},
-            "colorway": ["#17B897"],
+            "xaxis": {"fixedrange": False, "title": "Date"},
+            "yaxis": {"fixedrange": False, "title": "Inventory & Sales Units"},
         },
     }
 
@@ -267,7 +278,7 @@ def update_charts(productVar, segmentVar, productCategoryVar, startDateVar, endD
     else:
         data = table_data.to_dict('records')
 
-    return inventory_units_figure, \
+    return inventory_sales_units_figure, \
         data, [
       {"name": i, 'id': i} for i in table_data.columns
    ], hidden
