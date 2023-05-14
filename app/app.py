@@ -43,7 +43,7 @@ app.layout = html.Div(
             children=[
                 html.Div(
                         children=[
-                            html.Div(children = "Product", className = "menu-title"),
+                            html.Div(children = "Product Number", className = "menu-title"),
                             dcc.Dropdown(
                                 id = "product-filter",
                                 options = [
@@ -58,7 +58,7 @@ app.layout = html.Div(
                     ),
                     html.Div(
                         children=[
-                            html.Div(children = "Segment", className = "menu-title"),
+                            html.Div(children = "Segment Type", className = "menu-title"),
                             dcc.Dropdown(
                                 id = "segment-filter",
                                 options = [
